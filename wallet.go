@@ -218,7 +218,7 @@ func (w *wallet) Store() error {
 	if err != nil {
 		return err
 	}
-	return w.store.StoreWallet(w, data)
+	return w.store.StoreWallet(w.ID(), w.Name(), data)
 }
 
 // Lock locks the wallet.  A locked wallet cannot create new accounts.
@@ -314,7 +314,7 @@ func (w *wallet) Key() ([]byte, error) {
 func (w *wallet) Accounts() <-chan types.Account {
 	ch := make(chan types.Account, 1024)
 	go func() {
-		for data := range w.store.RetrieveAccounts(w) {
+		for data := range w.store.RetrieveAccounts(w.ID(), w.Name()) {
 			a := newAccount()
 			a.wallet = w
 			a.encryptor = w.encryptor
