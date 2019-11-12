@@ -11,5 +11,5 @@ require (
 	github.com/wealdtech/go-eth2-util v1.0.0
 	github.com/wealdtech/go-eth2-wallet-encryptor-keystorev4 v1.0.0
 	github.com/wealdtech/go-eth2-wallet-store-scratch v1.0.0
-	github.com/wealdtech/go-eth2-wallet-types v1.0.0
+	github.com/wealdtech/go-eth2-wallet-types v1.3.0
 )

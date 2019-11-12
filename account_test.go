@@ -56,9 +56,15 @@ func TestCreateAccount(t *testing.T) {
 	store := scratch.New()
 	encryptor := keystorev4.New()
 	wallet, err := hd.CreateWallet("test wallet", []byte("wallet passphrase"), store, encryptor)
-	wallet.Unlock([]byte("wallet passphrase"))
-	defer wallet.Lock()
 	require.Nil(t, err)
+
+	// Try to create without unlocking the wallet; should fail
+	_, err = wallet.CreateAccount("attempt", []byte("test"))
+	assert.NotNil(t, err)
+
+	err = wallet.Unlock([]byte("wallet passphrase"))
+	require.Nil(t, err)
+	defer wallet.Lock()
 	for _, test := range tests {
 		t.Run(test.name, func(t *testing.T) {
 			account, err := wallet.CreateAccount(test.accountName, test.accountPassphrase)
@@ -70,9 +76,6 @@ func TestCreateAccount(t *testing.T) {
 				account, err = wallet.AccountByName(test.accountName)
 				require.Nil(t, err)
 				assert.Equal(t, test.accountName, account.Name())
-				//				assert.Equal(t, test.id, account.ID())
-				//				assert.Equal(t, test.version, account.Version())
-				//				assert.Equal(t, test.walletType, account.Type())
 			}
 		})
 	}
