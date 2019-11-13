@@ -22,6 +22,7 @@ import (
 	keystorev4 "github.com/wealdtech/go-eth2-wallet-encryptor-keystorev4"
 	hd "github.com/wealdtech/go-eth2-wallet-hd"
 	scratch "github.com/wealdtech/go-eth2-wallet-store-scratch"
+	types "github.com/wealdtech/go-eth2-wallet-types"
 )
 
 func TestCreateAccount(t *testing.T) {
@@ -76,6 +77,15 @@ func TestCreateAccount(t *testing.T) {
 				account, err = wallet.AccountByName(test.accountName)
 				require.Nil(t, err)
 				assert.Equal(t, test.accountName, account.Name())
+				assert.NotNil(t, account.Path())
+
+				// Should not be able to obtain private key from a locked account
+				_, err = account.(types.AccountPrivateKeyProvider).PrivateKey()
+				assert.NotNil(t, err)
+				err = account.Unlock(test.accountPassphrase)
+				require.Nil(t, err)
+				_, err := account.(types.AccountPrivateKeyProvider).PrivateKey()
+				assert.Nil(t, err)
 			}
 		})
 	}
