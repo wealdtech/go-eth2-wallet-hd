@@ -327,7 +327,7 @@ func (w *wallet) Key() ([]byte, error) {
 func (w *wallet) Accounts() <-chan types.Account {
 	ch := make(chan types.Account, 1024)
 	go func() {
-		for data := range w.store.RetrieveAccounts(w.ID(), w.Name()) {
+		for data := range w.store.RetrieveAccounts(w.ID()) {
 			a := newAccount()
 			a.wallet = w
 			a.encryptor = w.encryptor
