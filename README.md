@@ -32,7 +32,7 @@ Access to the `wallet` is usually via [go-eth2-wallet](https://github.com/wealdt
 
 This wallet generates keys deterministically based on a seed phrase stored within the wallet itself.
 
-The wallet uses the path `m/12381/60/n/0`, where _n_ is the number of the account created; for the first account created _n_ is 0, for the second accout _n_ is 1, _etc._
+The wallet uses the path `m/12381/3600/n/0`, where _n_ is the number of the account created; for the first account created _n_ is 0, for the second accout _n_ is 1, _etc._
 
 Wallet and account names may be composed of any valid UTF-8 characters; the only restriction is they can not start with the underscore (`_`) character.
 

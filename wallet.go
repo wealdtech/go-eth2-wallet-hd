@@ -290,7 +290,7 @@ func (w *wallet) CreateAccount(name string, passphrase []byte) (types.Account, e
 		return nil, errors.Wrapf(err, "failed to create account %q", name)
 	}
 
-	path := fmt.Sprintf("m/12381/60/%d/0", accountNum)
+	path := fmt.Sprintf("m/12381/3600/%d/0", accountNum)
 	privateKey, err := util.PrivateKeyFromSeedAndPath(w.seed, path)
 	if err != nil {
 		return nil, errors.Wrapf(err, "failed to create private key for account %q", name)
