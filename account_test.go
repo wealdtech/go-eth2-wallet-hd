@@ -68,13 +68,13 @@ func TestCreateAccount(t *testing.T) {
 	defer wallet.Lock()
 	for _, test := range tests {
 		t.Run(test.name, func(t *testing.T) {
-			account, err := wallet.CreateAccount(test.accountName, test.accountPassphrase)
+			_, err = wallet.CreateAccount(test.accountName, test.accountPassphrase)
 			if test.err != nil {
 				require.NotNil(t, err)
 				assert.Equal(t, test.err.Error(), err.Error())
 			} else {
 				require.Nil(t, err)
-				account, err = wallet.AccountByName(test.accountName)
+				account, err := wallet.AccountByName(test.accountName)
 				require.Nil(t, err)
 				assert.Equal(t, test.accountName, account.Name())
 				assert.NotNil(t, account.Path())
@@ -84,7 +84,7 @@ func TestCreateAccount(t *testing.T) {
 				assert.NotNil(t, err)
 				err = account.Unlock(test.accountPassphrase)
 				require.Nil(t, err)
-				_, err := account.(types.AccountPrivateKeyProvider).PrivateKey()
+				_, err = account.(types.AccountPrivateKeyProvider).PrivateKey()
 				assert.Nil(t, err)
 			}
 		})

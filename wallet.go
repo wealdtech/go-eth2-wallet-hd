@@ -177,7 +177,7 @@ func CreateWallet(name string, passphrase []byte, store types.Store, encryptor t
 	w.name = name
 	w.crypto = crypto
 	w.nextAccount = 0
-	w.version = 1
+	w.version = version
 	w.store = store
 	w.encryptor = encryptor
 
