@@ -481,16 +481,12 @@ func (w *wallet) programmaticAccount(path string) (types.Account, error) {
 func (w *wallet) retrieveAccountsIndex() error {
 	serializedIndex, err := w.store.RetrieveAccountsIndex(w.id)
 	if err != nil {
-		if strings.Contains(err.Error(), "index not found") {
-			// No index; create one.
-			w.index = indexer.New()
-			for account := range w.Accounts() {
-				w.index.Add(account.ID(), account.Name())
-			}
-			if err := w.store.StoreAccountsIndex(w.id, serializedIndex); err != nil {
-				return err
-			}
-		} else {
+		// Attempt to recreate the index.
+		w.index = indexer.New()
+		for account := range w.Accounts() {
+			w.index.Add(account.ID(), account.Name())
+		}
+		if err := w.storeAccountsIndex(); err != nil {
 			return err
 		}
 	} else {
