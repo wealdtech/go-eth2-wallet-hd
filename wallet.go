@@ -184,7 +184,7 @@ func CreateWallet(name string, passphrase []byte, store types.Store, encryptor t
 	w.store = store
 	w.encryptor = encryptor
 
-	return w, w.Store()
+	return w, w.storeWallet()
 }
 
 // OpenWallet opens an existing wallet with the given name.
@@ -231,8 +231,8 @@ func (w *wallet) Version() uint {
 	return w.version
 }
 
-// Store stores the wallet in the store.
-func (w *wallet) Store() error {
+// store stores the wallet in the store.
+func (w *wallet) storeWallet() error {
 	data, err := json.Marshal(w)
 	if err != nil {
 		return err
@@ -299,7 +299,7 @@ func (w *wallet) CreateAccount(name string, passphrase []byte) (types.Account, e
 	defer w.mutex.Unlock()
 	accountNum := w.nextAccount
 	w.nextAccount++
-	if err := w.Store(); err != nil {
+	if err := w.storeWallet(); err != nil {
 		return nil, errors.Wrapf(err, "failed to create account %q", name)
 	}
 
@@ -326,7 +326,7 @@ func (w *wallet) CreateAccount(name string, passphrase []byte) (types.Account, e
 
 	w.index.Add(a.id, a.name)
 
-	if err := a.Store(); err != nil {
+	if err := a.storeAccount(); err != nil {
 		return nil, err
 	}
 
@@ -408,7 +408,7 @@ func Import(encryptedData []byte, passphrase []byte, store types.Store, encrypto
 	}
 
 	// Create the wallet
-	if err := ext.Wallet.Store(); err != nil {
+	if err := ext.Wallet.storeWallet(); err != nil {
 		return nil, fmt.Errorf("failed to store wallet %q", ext.Wallet.Name())
 	}
 
@@ -417,7 +417,7 @@ func Import(encryptedData []byte, passphrase []byte, store types.Store, encrypto
 		acc.wallet = ext.Wallet
 		acc.encryptor = encryptor
 		acc.mutex = new(sync.RWMutex)
-		if err := acc.Store(); err != nil {
+		if err := acc.storeAccount(); err != nil {
 			return nil, fmt.Errorf("failed to store account %q", acc.Name())
 		}
 		ext.Wallet.index.Add(acc.id, acc.name)
@@ -448,6 +448,11 @@ func (w *wallet) AccountByID(id uuid.UUID) (types.Account, error) {
 		return nil, err
 	}
 	return deserializeAccount(w, data)
+}
+
+// Store returns the wallet's store.
+func (w *wallet) Store() types.Store {
+	return w.store
 }
 
 // programmaticAccount calculates an account on the fly given its path.
