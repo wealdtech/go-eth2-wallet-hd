@@ -19,9 +19,9 @@ import (
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 	keystorev4 "github.com/wealdtech/go-eth2-wallet-encryptor-keystorev4"
-	hd "github.com/wealdtech/go-eth2-wallet-hd"
+	hd "github.com/wealdtech/go-eth2-wallet-hd/v2"
 	scratch "github.com/wealdtech/go-eth2-wallet-store-scratch"
-	types "github.com/wealdtech/go-eth2-wallet-types"
+	wtypes "github.com/wealdtech/go-eth2-wallet-types/v2"
 )
 
 func TestCreateWallet(t *testing.T) {
@@ -38,12 +38,12 @@ func TestCreateWallet(t *testing.T) {
 	assert.NotNil(t, err)
 
 	// Try to obtain the key without unlocking the wallet; should fail
-	_, err = wallet.(types.WalletKeyProvider).Key()
+	_, err = wallet.(wtypes.WalletKeyProvider).Key()
 	assert.NotNil(t, err)
 
 	err = wallet.Unlock([]byte("wallet passphrase"))
 	require.Nil(t, err)
 
-	_, err = wallet.(types.WalletKeyProvider).Key()
+	_, err = wallet.(wtypes.WalletKeyProvider).Key()
 	assert.Nil(t, err)
 }

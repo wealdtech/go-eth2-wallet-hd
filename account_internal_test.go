@@ -208,7 +208,7 @@ func TestUnlock(t *testing.T) {
 			require.Nil(t, err)
 
 			// Try to sign something - should fail because locked
-			_, err = account.Sign([]byte("test"), 0)
+			_, err = account.Sign([]byte("test"))
 			assert.NotNil(t, err)
 
 			err = account.Unlock(test.passphrase)
@@ -219,17 +219,17 @@ func TestUnlock(t *testing.T) {
 				require.Nil(t, err)
 
 				// Try to sign something - should succeed because unlocked
-				signature, err := account.Sign([]byte("test"), 0)
+				signature, err := account.Sign([]byte("test"))
 				assert.Nil(t, err)
 
-				verified := signature.Verify([]byte("test"), account.PublicKey(), 0)
+				verified := signature.Verify([]byte("test"), account.PublicKey())
 				require.Nil(t, err)
 				assert.Equal(t, true, verified)
 
 				account.Lock()
 
 				// Try to sign something - should fail because locked (again)
-				_, err = account.Sign([]byte("test"), 0)
+				_, err = account.Sign([]byte("test"))
 				assert.NotNil(t, err)
 			}
 		})

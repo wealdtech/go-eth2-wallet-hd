@@ -20,9 +20,9 @@ import (
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 	keystorev4 "github.com/wealdtech/go-eth2-wallet-encryptor-keystorev4"
-	hd "github.com/wealdtech/go-eth2-wallet-hd"
+	hd "github.com/wealdtech/go-eth2-wallet-hd/v2"
 	scratch "github.com/wealdtech/go-eth2-wallet-store-scratch"
-	types "github.com/wealdtech/go-eth2-wallet-types"
+	wtypes "github.com/wealdtech/go-eth2-wallet-types/v2"
 )
 
 func TestCreateAccount(t *testing.T) {
@@ -80,11 +80,11 @@ func TestCreateAccount(t *testing.T) {
 				assert.NotNil(t, account.Path())
 
 				// Should not be able to obtain private key from a locked account
-				_, err = account.(types.AccountPrivateKeyProvider).PrivateKey()
+				_, err = account.(wtypes.AccountPrivateKeyProvider).PrivateKey()
 				assert.NotNil(t, err)
 				err = account.Unlock(test.accountPassphrase)
 				require.Nil(t, err)
-				_, err = account.(types.AccountPrivateKeyProvider).PrivateKey()
+				_, err = account.(wtypes.AccountPrivateKeyProvider).PrivateKey()
 				assert.Nil(t, err)
 			}
 		})
