@@ -10,7 +10,7 @@ require (
 	github.com/wealdtech/go-eth2-types/v2 v2.3.1
 	github.com/wealdtech/go-eth2-util v1.1.5
 	github.com/wealdtech/go-eth2-wallet-encryptor-keystorev4 v1.0.0
-	github.com/wealdtech/go-eth2-wallet-store-scratch v1.3.2
+	github.com/wealdtech/go-eth2-wallet-store-scratch v1.3.3
 	github.com/wealdtech/go-eth2-wallet-types/v2 v2.0.2
 	github.com/wealdtech/go-indexer v1.0.0
 )
