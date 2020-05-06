@@ -62,3 +62,23 @@ func TestExportWallet(t *testing.T) {
 	_, err = hd.Import(dump, []byte("dump"), store2, encryptor)
 	require.NotNil(t, err)
 }
+
+func TestWalletFromSeed(t *testing.T) {
+	store := scratch.New()
+	encryptor := keystorev4.New()
+	wallet, err := hd.CreateWallet("test wallet", []byte{}, store, encryptor)
+	require.Nil(t, err)
+	err = wallet.Unlock([]byte{})
+	require.Nil(t, err)
+	seed, err := wallet.(wtypes.WalletKeyProvider).Key()
+	require.Nil(t, err)
+
+	importedWallet, err := hd.CreateWalletFromSeed("imported wallet", []byte{}, store, encryptor, seed)
+	require.Nil(t, err)
+	err = importedWallet.Unlock([]byte{})
+	require.Nil(t, err)
+	importedSeed, err := importedWallet.(wtypes.WalletKeyProvider).Key()
+	require.Nil(t, err)
+
+	assert.Equal(t, seed, importedSeed)
+}

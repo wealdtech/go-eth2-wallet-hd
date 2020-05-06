@@ -150,12 +150,45 @@ func (w *wallet) UnmarshalJSON(data []byte) error {
 	return nil
 }
 
+// CreateWalletFromSeed creates a wallet with the given name from a seed and stores it in the provided store.
+func CreateWalletFromSeed(name string, passphrase []byte, store wtypes.Store, encryptor wtypes.Encryptor, seed []byte) (wtypes.Wallet, error) {
+	// First, try to open the wallet.
+	_, err := OpenWallet(name, store, encryptor)
+	if err == nil || !strings.Contains(err.Error(), "wallet not found") {
+		return nil, fmt.Errorf("wallet %q already exists", name)
+	}
+
+	id, err := uuid.NewRandom()
+	if err != nil {
+		return nil, err
+	}
+
+	if len(seed) != 32 {
+		return nil, errors.New("seed must be 32 bytes")
+	}
+	crypto, err := encryptor.Encrypt(seed, passphrase)
+	if err != nil {
+		return nil, errors.Wrap(err, "failed to encrypt seed")
+	}
+
+	w := newWallet()
+	w.id = id
+	w.name = name
+	w.crypto = crypto
+	w.nextAccount = 0
+	w.version = version
+	w.store = store
+	w.encryptor = encryptor
+
+	return w, w.storeWallet()
+}
+
 // CreateWallet creates a new wallet with the given name and stores it in the provided store.
 // This will error if the wallet already exists.
 func CreateWallet(name string, passphrase []byte, store wtypes.Store, encryptor wtypes.Encryptor) (wtypes.Wallet, error) {
 	// First, try to open the wallet.
 	_, err := OpenWallet(name, store, encryptor)
-	if err == nil {
+	if err == nil || !strings.Contains(err.Error(), "wallet not found") {
 		return nil, fmt.Errorf("wallet %q already exists", name)
 	}
 
