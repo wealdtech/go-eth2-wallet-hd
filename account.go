@@ -212,7 +212,7 @@ func (a *account) IsUnlocked() bool {
 	return a.secretKey != nil
 }
 
-// Path returns the full path from which the accout key is derived.
+// Path returns the full path from which the account key is derived.
 func (a *account) Path() string {
 	return a.path
 }
@@ -227,7 +227,7 @@ func (a *account) Sign(data []byte) (e2types.Signature, error) {
 	return a.secretKey.Sign(data), nil
 }
 
-// storeAccount stores the accout.
+// storeAccount stores the account.
 func (a *account) storeAccount() error {
 	a.mutex.RLock()
 	defer a.mutex.RUnlock()
