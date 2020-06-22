@@ -32,9 +32,9 @@ func TestExportWallet(t *testing.T) {
 	err = wallet.Unlock([]byte{})
 	require.Nil(t, err)
 
-	account1, err := wallet.CreateAccount("Account 1", []byte("account 1 passphrase"))
+	account1, err := wallet.(wtypes.WalletAccountCreator).CreateAccount("Account 1", []byte("account 1 passphrase"))
 	require.Nil(t, err)
-	account2, err := wallet.CreateAccount("Account 2", []byte("account 2 passphrase"))
+	account2, err := wallet.(wtypes.WalletAccountCreator).CreateAccount("Account 2", []byte("account 2 passphrase"))
 	require.Nil(t, err)
 
 	dump, err := wallet.(wtypes.WalletExporter).Export([]byte("dump"))

@@ -60,7 +60,7 @@ func TestCreateAccount(t *testing.T) {
 	require.Nil(t, err)
 
 	// Try to create without unlocking the wallet; should fail.
-	_, err = wallet.CreateAccount("attempt", []byte("test"))
+	_, err = wallet.(wtypes.WalletAccountCreator).CreateAccount("attempt", []byte("test"))
 	assert.NotNil(t, err)
 
 	err = wallet.Unlock([]byte("wallet passphrase"))
@@ -68,7 +68,7 @@ func TestCreateAccount(t *testing.T) {
 	defer wallet.Lock()
 	for _, test := range tests {
 		t.Run(test.name, func(t *testing.T) {
-			_, err = wallet.CreateAccount(test.accountName, test.accountPassphrase)
+			_, err = wallet.(wtypes.WalletAccountCreator).CreateAccount(test.accountName, test.accountPassphrase)
 			if test.err != nil {
 				require.NotNil(t, err)
 				assert.Equal(t, test.err.Error(), err.Error())
