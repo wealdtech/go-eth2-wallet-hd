@@ -14,6 +14,7 @@
 package hd_test
 
 import (
+	"context"
 	"testing"
 
 	"github.com/stretchr/testify/assert"
@@ -21,34 +22,36 @@ import (
 	keystorev4 "github.com/wealdtech/go-eth2-wallet-encryptor-keystorev4"
 	hd "github.com/wealdtech/go-eth2-wallet-hd/v2"
 	scratch "github.com/wealdtech/go-eth2-wallet-store-scratch"
-	wtypes "github.com/wealdtech/go-eth2-wallet-types/v2"
+	e2wtypes "github.com/wealdtech/go-eth2-wallet-types/v2"
 )
 
 func TestExportWallet(t *testing.T) {
 	store := scratch.New()
 	encryptor := keystorev4.New()
-	wallet, err := hd.CreateWallet("test wallet", []byte{}, store, encryptor)
+	wallet, err := hd.CreateWallet(context.Background(), "test wallet", []byte{}, store, encryptor)
 	require.Nil(t, err)
-	err = wallet.Unlock([]byte{})
-	require.Nil(t, err)
-
-	account1, err := wallet.(wtypes.WalletAccountCreator).CreateAccount("Account 1", []byte("account 1 passphrase"))
-	require.Nil(t, err)
-	account2, err := wallet.(wtypes.WalletAccountCreator).CreateAccount("Account 2", []byte("account 2 passphrase"))
+	locker, isLocker := wallet.(e2wtypes.WalletLocker)
+	require.True(t, isLocker)
+	err = locker.Unlock(context.Background(), []byte{})
 	require.Nil(t, err)
 
-	dump, err := wallet.(wtypes.WalletExporter).Export([]byte("dump"))
+	account1, err := wallet.(e2wtypes.WalletAccountCreator).CreateAccount(context.Background(), "Account 1", []byte("account 1 passphrase"))
+	require.Nil(t, err)
+	account2, err := wallet.(e2wtypes.WalletAccountCreator).CreateAccount(context.Background(), "Account 2", []byte("account 2 passphrase"))
+	require.Nil(t, err)
+
+	dump, err := wallet.(e2wtypes.WalletExporter).Export(context.Background(), []byte("dump"))
 	require.Nil(t, err)
 
 	// Import it
 	store2 := scratch.New()
-	wallet2, err := hd.Import(dump, []byte("dump"), store2, encryptor)
+	wallet2, err := hd.Import(context.Background(), dump, []byte("dump"), store2, encryptor)
 	require.Nil(t, err)
 
 	// Confirm the accounts are present
 	account1Present := false
 	account2Present := false
-	for account := range wallet2.Accounts() {
+	for account := range wallet2.Accounts(context.Background()) {
 		if account.ID().String() == account1.ID().String() {
 			account1Present = true
 		}
@@ -59,25 +62,29 @@ func TestExportWallet(t *testing.T) {
 	assert.True(t, account1Present && account2Present)
 
 	// Try to import it again; should fail
-	_, err = hd.Import(dump, []byte("dump"), store2, encryptor)
+	_, err = hd.Import(context.Background(), dump, []byte("dump"), store2, encryptor)
 	require.NotNil(t, err)
 }
 
 func TestWalletFromSeed(t *testing.T) {
 	store := scratch.New()
 	encryptor := keystorev4.New()
-	wallet, err := hd.CreateWallet("test wallet", []byte{}, store, encryptor)
+	wallet, err := hd.CreateWallet(context.Background(), "test wallet", []byte{}, store, encryptor)
 	require.Nil(t, err)
-	err = wallet.Unlock([]byte{})
+	locker, isLocker := wallet.(e2wtypes.WalletLocker)
+	require.True(t, isLocker)
+	err = locker.Unlock(context.Background(), []byte{})
 	require.Nil(t, err)
-	seed, err := wallet.(wtypes.WalletKeyProvider).Key()
+	seed, err := wallet.(e2wtypes.WalletKeyProvider).Key(context.Background())
 	require.Nil(t, err)
 
-	importedWallet, err := hd.CreateWalletFromSeed("imported wallet", []byte{}, store, encryptor, seed)
+	importedWallet, err := hd.CreateWalletFromSeed(context.Background(), "imported wallet", []byte{}, store, encryptor, seed)
 	require.Nil(t, err)
-	err = importedWallet.Unlock([]byte{})
+	locker, isLocker = importedWallet.(e2wtypes.WalletLocker)
+	require.True(t, isLocker)
+	err = locker.Unlock(context.Background(), []byte{})
 	require.Nil(t, err)
-	importedSeed, err := importedWallet.(wtypes.WalletKeyProvider).Key()
+	importedSeed, err := importedWallet.(e2wtypes.WalletKeyProvider).Key(context.Background())
 	require.Nil(t, err)
 
 	assert.Equal(t, seed, importedSeed)

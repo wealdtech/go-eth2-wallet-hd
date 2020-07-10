@@ -15,6 +15,7 @@ package hd
 
 import (
 	"bytes"
+	"context"
 	"encoding/hex"
 	"encoding/json"
 	"fmt"
@@ -24,7 +25,7 @@ import (
 	"github.com/pkg/errors"
 	e2types "github.com/wealdtech/go-eth2-types/v2"
 	keystorev4 "github.com/wealdtech/go-eth2-wallet-encryptor-keystorev4"
-	wtypes "github.com/wealdtech/go-eth2-wallet-types/v2"
+	e2wtypes "github.com/wealdtech/go-eth2-wallet-types/v2"
 )
 
 // account contains the details of the account.
@@ -36,8 +37,8 @@ type account struct {
 	secretKey e2types.PrivateKey
 	version   uint
 	path      string
-	wallet    wtypes.Wallet
-	encryptor wtypes.Encryptor
+	wallet    e2wtypes.Wallet
+	encryptor e2wtypes.Encryptor
 	mutex     *sync.RWMutex
 }
 
@@ -172,22 +173,32 @@ func (a *account) PublicKey() e2types.PublicKey {
 }
 
 // PrivateKey provides the private key for the account.
-func (a *account) PrivateKey() (e2types.PrivateKey, error) {
-	if !a.IsUnlocked() {
+func (a *account) PrivateKey(ctx context.Context) (e2types.PrivateKey, error) {
+	unlocked, err := a.IsUnlocked(ctx)
+	if err != nil {
+		return nil, err
+	}
+	if !unlocked {
 		return nil, errors.New("cannot provide private key when account is locked")
 	}
 	return e2types.BLSPrivateKeyFromBytes(a.secretKey.Marshal())
 }
 
+// Wallet provides the wallet for the account.
+func (a *account) Wallet() e2wtypes.Wallet {
+	return a.wallet
+}
+
 // Lock locks the account.  A locked account cannot sign data.
-func (a *account) Lock() {
+func (a *account) Lock(ctx context.Context) error {
 	a.mutex.Lock()
 	defer a.mutex.Unlock()
 	a.secretKey = nil
+	return nil
 }
 
 // Unlock unlocks the account.  An unlocked account can sign data.
-func (a *account) Unlock(passphrase []byte) error {
+func (a *account) Unlock(ctx context.Context, passphrase []byte) error {
 	a.mutex.Lock()
 	defer a.mutex.Unlock()
 
@@ -208,8 +219,8 @@ func (a *account) Unlock(passphrase []byte) error {
 }
 
 // IsUnlocked returns true if the account is unlocked.
-func (a *account) IsUnlocked() bool {
-	return a.secretKey != nil
+func (a *account) IsUnlocked(ctx context.Context) (bool, error) {
+	return a.secretKey != nil, nil
 }
 
 // Path returns the full path from which the account key is derived.
@@ -218,10 +229,14 @@ func (a *account) Path() string {
 }
 
 // Sign signs data.
-func (a *account) Sign(data []byte) (e2types.Signature, error) {
+func (a *account) Sign(ctx context.Context, data []byte) (e2types.Signature, error) {
 	a.mutex.RLock()
 	defer a.mutex.RUnlock()
-	if !a.IsUnlocked() {
+	unlocked, err := a.IsUnlocked(ctx)
+	if err != nil {
+		return nil, err
+	}
+	if !unlocked {
 		return nil, errors.New("cannot sign when account is locked")
 	}
 	return a.secretKey.Sign(data), nil
@@ -245,7 +260,7 @@ func (a *account) storeAccount() error {
 }
 
 // deserializeAccount deserializes account data to an account.
-func deserializeAccount(w *wallet, data []byte) (wtypes.Account, error) {
+func deserializeAccount(w *wallet, data []byte) (e2wtypes.Account, error) {
 	a := newAccount()
 	a.wallet = w
 	a.encryptor = w.encryptor
