@@ -15,7 +15,6 @@ package hd
 
 import (
 	"context"
-	"crypto/rand"
 	"encoding/json"
 	"fmt"
 	"strings"
@@ -151,8 +150,8 @@ func (w *wallet) UnmarshalJSON(data []byte) error {
 	return nil
 }
 
-// CreateWalletFromSeed creates a wallet with the given name from a seed and stores it in the provided store.
-func CreateWalletFromSeed(ctx context.Context, name string, passphrase []byte, store e2wtypes.Store, encryptor e2wtypes.Encryptor, seed []byte) (e2wtypes.Wallet, error) {
+// CreateWallet creates a wallet with the given name from a seed and stores it in the provided store.
+func CreateWallet(ctx context.Context, name string, passphrase []byte, store e2wtypes.Store, encryptor e2wtypes.Encryptor, seed []byte) (e2wtypes.Wallet, error) {
 	// First, try to open the wallet.
 	_, err := OpenWallet(ctx, name, store, encryptor)
 	if err == nil || !strings.Contains(err.Error(), "wallet not found") {
@@ -164,49 +163,18 @@ func CreateWalletFromSeed(ctx context.Context, name string, passphrase []byte, s
 		return nil, err
 	}
 
-	if len(seed) != 32 {
-		return nil, errors.New("seed must be 32 bytes")
+	if len(seed) != 64 {
+		return nil, errors.New("seed must be 64 bytes")
 	}
-	crypto, err := encryptor.Encrypt(seed, passphrase)
+	crypto, err := encryptor.Encrypt(seed, string(passphrase))
 	if err != nil {
 		return nil, errors.Wrap(err, "failed to encrypt seed")
 	}
 
-	w := newWallet()
-	w.id = id
-	w.name = name
-	w.crypto = crypto
-	w.nextAccount = 0
-	w.version = version
-	w.store = store
-	w.encryptor = encryptor
-
-	return w, w.storeWallet()
-}
-
-// CreateWallet creates a new wallet with the given name and stores it in the provided store.
-// This will error if the wallet already exists.
-func CreateWallet(ctx context.Context, name string, passphrase []byte, store e2wtypes.Store, encryptor e2wtypes.Encryptor) (e2wtypes.Wallet, error) {
-	// First, try to open the wallet.
-	_, err := OpenWallet(ctx, name, store, encryptor)
-	if err == nil || !strings.Contains(err.Error(), "wallet not found") {
-		return nil, fmt.Errorf("wallet %q already exists", name)
-	}
-
-	id, err := uuid.NewRandom()
+	// Decrypt to confirm it works.
+	_, err = encryptor.Decrypt(crypto, string(passphrase))
 	if err != nil {
-		return nil, err
-	}
-
-	// Random seed
-	seed := make([]byte, 32)
-	_, err = rand.Read(seed)
-	if err != nil {
-		return nil, errors.Wrap(err, "failed to generate wallet seed")
-	}
-	crypto, err := encryptor.Encrypt(seed, passphrase)
-	if err != nil {
-		return nil, errors.Wrap(err, "failed to encrypt seed")
+		return nil, errors.Wrap(err, "failed to decrypt seed")
 	}
 
 	w := newWallet()
@@ -297,7 +265,7 @@ func (w *wallet) Unlock(ctx context.Context, passphrase []byte) error {
 	w.mutex.Lock()
 	defer w.mutex.Unlock()
 
-	seed, err := w.encryptor.Decrypt(w.crypto, passphrase)
+	seed, err := w.encryptor.Decrypt(w.crypto, string(passphrase))
 	if err != nil {
 		return errors.New("incorrect passphrase")
 	}
@@ -355,7 +323,7 @@ func (w *wallet) CreateAccount(ctx context.Context, name string, passphrase []by
 	a.name = name
 	a.publicKey = privateKey.PublicKey()
 	// Encrypt the private key
-	a.crypto, err = w.encryptor.Encrypt(privateKey.Marshal(), passphrase)
+	a.crypto, err = w.encryptor.Encrypt(privateKey.Marshal(), string(passphrase))
 	if err != nil {
 		return nil, err
 	}
@@ -370,18 +338,6 @@ func (w *wallet) CreateAccount(ctx context.Context, name string, passphrase []by
 	}
 
 	return a, nil
-}
-
-// Key returns the wallet's HD seed
-func (w *wallet) Key(ctx context.Context) ([]byte, error) {
-	unlocked, err := w.IsUnlocked(ctx)
-	if err != nil {
-		return nil, errors.Wrap(err, "failed to obtain lock status")
-	}
-	if !unlocked {
-		return nil, errors.New("wallet must be unlocked to provide seed")
-	}
-	return w.seed, nil
 }
 
 // Accounts provides all accounts in the wallet.
@@ -515,7 +471,7 @@ func (w *wallet) programmaticAccount(path string) (e2wtypes.Account, error) {
 	a.publicKey = privateKey.PublicKey()
 	a.secretKey = privateKey
 	// Encrypt the private key with an empty passphrase
-	a.crypto, err = w.encryptor.Encrypt(privateKey.Marshal(), []byte{})
+	a.crypto, err = w.encryptor.Encrypt(privateKey.Marshal(), "")
 	if err != nil {
 		return nil, err
 	}
