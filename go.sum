@@ -80,6 +80,8 @@ github.com/wealdtech/go-eth2-types/v2 v2.5.0 h1:L8sl3yoICAbn3134CBLNUt0o5h2voe0E
 github.com/wealdtech/go-eth2-types/v2 v2.5.0/go.mod h1:321w9X26lAnNa/lQJi2A6Lap5IsNORoLwFPoJ1i8QvY=
 github.com/wealdtech/go-eth2-util v1.5.0 h1:b3fgyvoq/WocW9LkWT7zcO5VCKzKLCc97rPrk/B9oIc=
 github.com/wealdtech/go-eth2-util v1.5.0/go.mod h1:0PGWeWWc6qjky/aNjdPdguJdZ2HSEHHCA+3cTjvT+Hk=
+github.com/wealdtech/go-eth2-util v1.6.0 h1:l2OR0SqfYdEnb1I1Ggnk0w+B9/LA5aHdQ2KK2FPnGkY=
+github.com/wealdtech/go-eth2-util v1.6.0/go.mod h1:0PGWeWWc6qjky/aNjdPdguJdZ2HSEHHCA+3cTjvT+Hk=
 github.com/wealdtech/go-eth2-wallet-encryptor-keystorev4 v1.0.0 h1:IcpS4VpXhYz+TVupB5n6C6IQzaKwG+Rc8nvgCa/da4c=
 github.com/wealdtech/go-eth2-wallet-encryptor-keystorev4 v1.0.0/go.mod h1:X8WRO5hEwbjx8ZOqoRmtS1ngyflKs25GkP7qGv7yOqE=
 github.com/wealdtech/go-eth2-wallet-encryptor-keystorev4 v1.1.0 h1:CWb82xeNaZQt1Z829RyDALUy7UZbc6VOfTS+82jRdEQ=
