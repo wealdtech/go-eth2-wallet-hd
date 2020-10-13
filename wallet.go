@@ -343,11 +343,7 @@ func (w *wallet) createPathedAccount(ctx context.Context, path string, name stri
 	if strings.HasPrefix(name, "_") {
 		return nil, fmt.Errorf("invalid account name %q", name)
 	}
-	unlocked, err := w.IsUnlocked(ctx)
-	if err != nil {
-		return nil, errors.Wrap(err, "failed to obtain lock status")
-	}
-	if !unlocked {
+	if w.seed == nil {
 		return nil, errors.New("wallet must be unlocked to create accounts")
 	}
 
