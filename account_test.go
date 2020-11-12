@@ -179,6 +179,13 @@ func TestCreatePathedAccount(t *testing.T) {
 	// Attempt to create an account with the the same path; should fail.
 	_, err = wallet.(e2wtypes.WalletPathedAccountCreator).CreatePathedAccount(context.Background(), "m/12381/3600/1/2/3", "Test 4", []byte("account passphrase"))
 	require.EqualError(t, err, `account with path "m/12381/3600/1/2/3" already exists`)
+
+	// Attempt to create an account with the highest legal index; should succeed.
+	_, err = wallet.(e2wtypes.WalletPathedAccountCreator).CreatePathedAccount(context.Background(), "m/12381/3600/1/2/4294967295", "Test 5", []byte("account passphrase"))
+	require.Nil(t, err)
+	// Attempt to create an account with the lowest illegal index; should fail.
+	_, err = wallet.(e2wtypes.WalletPathedAccountCreator).CreatePathedAccount(context.Background(), "m/12381/3600/1/2/4294967296", "Test 6", []byte("account passphrase"))
+	require.EqualError(t, err, `failed to create private key for account "Test 6": invalid index "4294967296" at path component 5`)
 }
 
 func TestCreatePathedAccountConflict(t *testing.T) {

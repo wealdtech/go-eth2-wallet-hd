@@ -8,7 +8,7 @@ require (
 	github.com/stretchr/testify v1.5.1
 	github.com/wealdtech/go-ecodec v1.1.1
 	github.com/wealdtech/go-eth2-types/v2 v2.5.1
-	github.com/wealdtech/go-eth2-util v1.6.1
+	github.com/wealdtech/go-eth2-util v1.6.2
 	github.com/wealdtech/go-eth2-wallet-encryptor-keystorev4 v1.1.2
 	github.com/wealdtech/go-eth2-wallet-store-filesystem v1.16.13
 	github.com/wealdtech/go-eth2-wallet-store-scratch v1.6.1
