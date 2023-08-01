@@ -3,8 +3,6 @@
 [![Tag](https://img.shields.io/github/tag/wealdtech/go-eth2-wallet-hd.svg)](https://github.com/wealdtech/go-eth2-wallet-hd/releases/)
 [![License](https://img.shields.io/github/license/wealdtech/go-eth2-wallet-hd.svg)](LICENSE)
 [![GoDoc](https://godoc.org/github.com/wealdtech/go-eth2-wallet-hd?status.svg)](https://godoc.org/github.com/wealdtech/go-eth2-wallet-hd)
-[![Travis CI](https://img.shields.io/travis/wealdtech/go-eth2-wallet-hd.svg)](https://travis-ci.org/wealdtech/go-eth2-wallet-hd)
-[![codecov.io](https://img.shields.io/codecov/c/github/wealdtech/go-eth2-wallet-hd.svg)](https://codecov.io/github/wealdtech/go-eth2-wallet-hd)
 [![Go Report Card](https://goreportcard.com/badge/github.com/wealdtech/go-eth2-wallet-hd)](https://goreportcard.com/report/github.com/wealdtech/go-eth2-wallet-hd)
 
 Hierarchical deterministic [Ethereum 2 wallet](https://github.com/wealdtech/go-eth2-wallet).
