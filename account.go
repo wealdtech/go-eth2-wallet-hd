@@ -1,4 +1,4 @@
-// Copyright 2019, 2020 Weald Technology Trading
+// Copyright 2019 - 2023 Weald Technology Trading.
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
 // You may obtain a copy of the License at
@@ -33,25 +33,24 @@ type account struct {
 	id        uuid.UUID
 	name      string
 	publicKey e2types.PublicKey
-	crypto    map[string]interface{}
+	crypto    map[string]any
+	unlocked  bool
 	secretKey e2types.PrivateKey
 	version   uint
 	path      string
-	wallet    e2wtypes.Wallet
+	wallet    *wallet
 	encryptor e2wtypes.Encryptor
-	mutex     *sync.RWMutex
+	mutex     sync.Mutex
 }
 
 // newAccount creates a new account
 func newAccount() *account {
-	return &account{
-		mutex: new(sync.RWMutex),
-	}
+	return &account{}
 }
 
 // MarshalJSON implements custom JSON marshaller.
 func (a *account) MarshalJSON() ([]byte, error) {
-	data := make(map[string]interface{})
+	data := make(map[string]any)
 	data["uuid"] = a.id.String()
 	data["name"] = a.name
 	data["pubkey"] = fmt.Sprintf("%x", a.publicKey.Marshal())
@@ -63,7 +62,7 @@ func (a *account) MarshalJSON() ([]byte, error) {
 
 // UnmarshalJSON implements custom JSON unmarshaller.
 func (a *account) UnmarshalJSON(data []byte) error {
-	var v map[string]interface{}
+	var v map[string]any
 	if err := json.Unmarshal(data, &v); err != nil {
 		return err
 	}
@@ -119,7 +118,7 @@ func (a *account) UnmarshalJSON(data []byte) error {
 		return errors.New("account pubkey missing")
 	}
 	if val, exists := v["crypto"]; exists {
-		crypto, ok := val.(map[string]interface{})
+		crypto, ok := val.(map[string]any)
 		if !ok {
 			return errors.New("account crypto invalid")
 		}
@@ -174,13 +173,10 @@ func (a *account) PublicKey() e2types.PublicKey {
 
 // PrivateKey provides the private key for the account.
 func (a *account) PrivateKey(ctx context.Context) (e2types.PrivateKey, error) {
-	unlocked, err := a.IsUnlocked(ctx)
-	if err != nil {
-		return nil, err
-	}
-	if !unlocked {
+	if !a.unlocked {
 		return nil, errors.New("cannot provide private key when account is locked")
 	}
+
 	return e2types.BLSPrivateKeyFromBytes(a.secretKey.Marshal())
 }
 
@@ -193,7 +189,9 @@ func (a *account) Wallet() e2wtypes.Wallet {
 func (a *account) Lock(ctx context.Context) error {
 	a.mutex.Lock()
 	defer a.mutex.Unlock()
-	a.secretKey = nil
+
+	a.unlocked = false
+
 	return nil
 }
 
@@ -202,30 +200,46 @@ func (a *account) Unlock(ctx context.Context, passphrase []byte) error {
 	a.mutex.Lock()
 	defer a.mutex.Unlock()
 
-	// If the account is already unlocked then nothing to do.
-	if a.secretKey != nil {
+	if a.unlocked {
+		// The account is already unlocked; nothing to do.
 		return nil
 	}
 
-	secretBytes, err := a.encryptor.Decrypt(a.crypto, string(passphrase))
-	if err != nil {
-		return errors.New("incorrect passphrase")
+	if a.secretKey == nil {
+		// First time unlocking, need to decrypt the secret key.
+		if a.crypto == nil {
+			// This is a batch account, decrypt the batch.
+			if err := a.wallet.batchDecrypt(ctx, passphrase); err != nil {
+				return errors.New("incorrect batch passphrase")
+			}
+		} else {
+			// This is an individual account, decrypt the account.
+			secretKeyBytes, err := a.encryptor.Decrypt(a.crypto, string(passphrase))
+			if err != nil {
+				return errors.New("incorrect passphrase")
+			}
+			secretKey, err := e2types.BLSPrivateKeyFromBytes(secretKeyBytes)
+			if err != nil {
+				return errors.Wrap(err, "failed to obtain private key")
+			}
+			a.secretKey = secretKey
+		}
+
+		// Ensure the private key is correct.
+		publicKey := a.secretKey.PublicKey()
+		if !bytes.Equal(publicKey.Marshal(), a.publicKey.Marshal()) {
+			a.secretKey = nil
+			return errors.New("private key does not correspond to public key")
+		}
 	}
-	secretKey, err := e2types.BLSPrivateKeyFromBytes(secretBytes)
-	if err != nil {
-		return err
-	}
-	publicKey := secretKey.PublicKey()
-	if !bytes.Equal(publicKey.Marshal(), a.publicKey.Marshal()) {
-		return errors.New("secret key does not correspond to public key")
-	}
-	a.secretKey = secretKey
+	a.unlocked = true
+
 	return nil
 }
 
 // IsUnlocked returns true if the account is unlocked.
 func (a *account) IsUnlocked(ctx context.Context) (bool, error) {
-	return a.secretKey != nil, nil
+	return a.unlocked, nil
 }
 
 // Path returns the full path from which the account key is derived.
@@ -234,35 +248,41 @@ func (a *account) Path() string {
 }
 
 // Sign signs data.
-func (a *account) Sign(ctx context.Context, data []byte) (e2types.Signature, error) {
-	a.mutex.RLock()
-	defer a.mutex.RUnlock()
-	unlocked, err := a.IsUnlocked(ctx)
-	if err != nil {
-		return nil, err
-	}
-	if !unlocked {
+func (a *account) Sign(_ context.Context, data []byte) (e2types.Signature, error) {
+	a.mutex.Lock()
+	defer a.mutex.Unlock()
+
+	if !a.unlocked {
 		return nil, errors.New("cannot sign when account is locked")
 	}
+
 	return a.secretKey.Sign(data), nil
 }
 
 // storeAccount stores the account.
-func (a *account) storeAccount() error {
-	a.mutex.RLock()
-	defer a.mutex.RUnlock()
+func (a *account) storeAccount(ctx context.Context) error {
 	data, err := json.Marshal(a)
 	if err != nil {
-		return err
+		return errors.Wrap(err, "failed to create store format")
 	}
-	if err := a.wallet.(*wallet).storeAccountsIndex(); err != nil {
-		return err
+
+	if err := a.wallet.store.StoreAccount(a.wallet.ID(), a.ID(), data); err != nil {
+		return errors.Wrap(err, "failed to store account")
 	}
-	return a.wallet.(*wallet).store.StoreAccount(a.wallet.ID(), a.ID(), data)
+
+	// Check to ensure the account can be retrieved.
+	if _, err = a.wallet.AccountByName(ctx, a.name); err != nil {
+		return errors.Wrap(err, "failed to confirm account when retrieving by name")
+	}
+	if _, err = a.wallet.AccountByID(ctx, a.id); err != nil {
+		return errors.Wrap(err, "failed to confirm account when retrieveing by ID")
+	}
+
+	return nil
 }
 
 // deserializeAccount deserializes account data to an account.
-func deserializeAccount(w *wallet, data []byte) (e2wtypes.Account, error) {
+func deserializeAccount(w *wallet, data []byte) (*account, error) {
 	a := newAccount()
 	a.wallet = w
 	a.encryptor = w.encryptor
