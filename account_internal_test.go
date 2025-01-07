@@ -75,7 +75,7 @@ func TestUnmarshalAccount(t *testing.T) {
 		{
 			name:  "BadID",
 			input: []byte(`{"uuid":"c99","name":"test account","pubkey":"a99a76ed7796f7be22d5b7e85deeb7c5677e88e511e0b337618f8c4eb61349b4bf2d153f649f7b53359fe8b94a38e44c","version":4,"crypto":{"checksum":{"function":"sha256","message":"09b65fda487a021900003a8b2081694b15ca73e0e59a5c79a5126f6818a2f171","params":{}},"cipher":{"function":"aes-128-ctr","message":"8386db98fbe002c02de9bc122b7680078045bf6c5c9ac2f7e8b53afbea0d3e15","params":{"iv":"45092570c625ad5e8decfcd991464740"}},"kdf":{"function":"pbkdf2","message":"","params":{"c":16,"dklen":32,"prf":"hmac-sha256","salt":"ae6433afd822e6d99dfaa1a0d73d2ee263efdf62f858ba0c422cf27982d09c8a"}}},"path":"m/12381/3600/0/0"}`),
-			err:   errors.New("invalid UUID length: 3"),
+			err:   errors.New("failed to parse UUID: invalid UUID length: 3"),
 		},
 		{
 			name:  "WrongOldID",
@@ -85,12 +85,7 @@ func TestUnmarshalAccount(t *testing.T) {
 		{
 			name:  "BadOldID",
 			input: []byte(`{"id":"c99","name":"test account","pubkey":"a99a76ed7796f7be22d5b7e85deeb7c5677e88e511e0b337618f8c4eb61349b4bf2d153f649f7b53359fe8b94a38e44c","version":4,"crypto":{"checksum":{"function":"sha256","message":"09b65fda487a021900003a8b2081694b15ca73e0e59a5c79a5126f6818a2f171","params":{}},"cipher":{"function":"aes-128-ctr","message":"8386db98fbe002c02de9bc122b7680078045bf6c5c9ac2f7e8b53afbea0d3e15","params":{"iv":"45092570c625ad5e8decfcd991464740"}},"kdf":{"function":"pbkdf2","message":"","params":{"c":16,"dklen":32,"prf":"hmac-sha256","salt":"ae6433afd822e6d99dfaa1a0d73d2ee263efdf62f858ba0c422cf27982d09c8a"}}},"path":"m/12381/3600/0/0"}`),
-			err:   errors.New("invalid UUID length: 3"),
-		},
-		{
-			name:  "MissingName",
-			input: []byte(`{"id":"c9958061-63d4-4a80-bcf3-25f3dda22340","pubkey":"a99a76ed7796f7be22d5b7e85deeb7c5677e88e511e0b337618f8c4eb61349b4bf2d153f649f7b53359fe8b94a38e44c","version":4,"crypto":{"checksum":{"function":"sha256","message":"09b65fda487a021900003a8b2081694b15ca73e0e59a5c79a5126f6818a2f171","params":{}},"cipher":{"function":"aes-128-ctr","message":"8386db98fbe002c02de9bc122b7680078045bf6c5c9ac2f7e8b53afbea0d3e15","params":{"iv":"45092570c625ad5e8decfcd991464740"}},"kdf":{"function":"pbkdf2","message":"","params":{"c":16,"dklen":32,"prf":"hmac-sha256","salt":"ae6433afd822e6d99dfaa1a0d73d2ee263efdf62f858ba0c422cf27982d09c8a"}}},"path":"m/12381/3600/0/0"}`),
-			err:   errors.New("account name missing"),
+			err:   errors.New("failed to parse UUID: invalid UUID length: 3"),
 		},
 		{
 			name:  "WrongName",
@@ -130,12 +125,12 @@ func TestUnmarshalAccount(t *testing.T) {
 		{
 			name:  "BadPubKey",
 			input: []byte(`{"uuid":"c9958061-63d4-4a80-bcf3-25f3dda22340","name":"test account","pubkey":"a99a76ed7796f7be22d5b7e85deeb7c5677e88e511e0b337618f8c4eb61349b4bf2d153f649f7b53359fe8b94a38e44h","version":4,"crypto":{"checksum":{"function":"sha256","message":"09b65fda487a021900003a8b2081694b15ca73e0e59a5c79a5126f6818a2f171","params":{}},"cipher":{"function":"aes-128-ctr","message":"8386db98fbe002c02de9bc122b7680078045bf6c5c9ac2f7e8b53afbea0d3e15","params":{"iv":"45092570c625ad5e8decfcd991464740"}},"kdf":{"function":"pbkdf2","message":"","params":{"c":16,"dklen":32,"prf":"hmac-sha256","salt":"ae6433afd822e6d99dfaa1a0d73d2ee263efdf62f858ba0c422cf27982d09c8a"}}},"path":"m/12381/3600/0/0"}`),
-			err:   errors.New(`encoding/hex: invalid byte: U+0068 'h'`),
+			err:   errors.New(`failed to decode public key: encoding/hex: invalid byte: U+0068 'h'`),
 		},
 		{
 			name:  "BadPubKey2",
 			input: []byte(`{"uuid":"c9958061-63d4-4a80-bcf3-25f3dda22340","name":"test account","pubkey":"a99a76ed7796f7be22d5b7e85deeb7c5677e88e511e0b337618f8c4eb61349b4bf2d153f649f7b53359fe8b94a38e44c4c","version":4,"crypto":{"checksum":{"function":"sha256","message":"09b65fda487a021900003a8b2081694b15ca73e0e59a5c79a5126f6818a2f171","params":{}},"cipher":{"function":"aes-128-ctr","message":"8386db98fbe002c02de9bc122b7680078045bf6c5c9ac2f7e8b53afbea0d3e15","params":{"iv":"45092570c625ad5e8decfcd991464740"}},"kdf":{"function":"pbkdf2","message":"","params":{"c":16,"dklen":32,"prf":"hmac-sha256","salt":"ae6433afd822e6d99dfaa1a0d73d2ee263efdf62f858ba0c422cf27982d09c8a"}}},"path":"m/12381/3600/0/0"}`),
-			err:   errors.New(`public key must be 48 bytes`),
+			err:   errors.New(`account pubkey could not be decoded: public key must be 48 bytes`),
 		},
 		{
 			name:  "MissingVersion",
@@ -151,6 +146,14 @@ func TestUnmarshalAccount(t *testing.T) {
 			name:  "WrongVersion",
 			input: []byte(`{"uuid":"c9958061-63d4-4a80-bcf3-25f3dda22340","name":"test account","pubkey":"a99a76ed7796f7be22d5b7e85deeb7c5677e88e511e0b337618f8c4eb61349b4bf2d153f649f7b53359fe8b94a38e44c","version":3,"crypto":{"checksum":{"function":"sha256","message":"09b65fda487a021900003a8b2081694b15ca73e0e59a5c79a5126f6818a2f171","params":{}},"cipher":{"function":"aes-128-ctr","message":"8386db98fbe002c02de9bc122b7680078045bf6c5c9ac2f7e8b53afbea0d3e15","params":{"iv":"45092570c625ad5e8decfcd991464740"}},"kdf":{"function":"pbkdf2","message":"","params":{"c":16,"dklen":32,"prf":"hmac-sha256","salt":"ae6433afd822e6d99dfaa1a0d73d2ee263efdf62f858ba0c422cf27982d09c8a"}}},"path":"m/12381/3600/0/0"}`),
 			err:   errors.New(`unsupported keystore version`),
+		},
+		{
+			name:       "Keystore",
+			input:      []byte(`{"crypto": {"kdf": {"function": "scrypt", "params": {"dklen": 32, "n": 262144, "r": 8, "p": 1, "salt": "1653ea66b5867a30919506bdfd247767ada85264700fc499d988761d26a33a15"}, "message": ""}, "checksum": {"function": "sha256", "params": {}, "message": "e4c993187b97b105b1ab44688d46350e6bb4b91369b878f851f87ba1187b829d"}, "cipher": {"function": "aes-128-ctr", "params": {"iv": "4c69b5c90d7b26a6972a481d19f8bbec"}, "message": "c8270de22051c2872c4162f0410515854b446ed11aba69d1f87acd4e3e1fe7cc"}}, "description": "", "pubkey": "a431d185cdc09056e33f9ac404021d58a01ffc55d2c4daf5b6ad85848d8d3ca501f775d9da585025a0ecbd902b87b2af", "path": "m/12381/3600/0/0/0", "uuid": "7759b20b-6956-4faa-b60d-33ebffad8f4d", "version": 4}`),
+			walletType: "hierarchical deterministic",
+			id:         uuid.MustParse("7759b20b-6956-4faa-b60d-33ebffad8f4d"),
+			publicKey:  []byte{0xa4, 0x31, 0xd1, 0x85, 0xcd, 0xc0, 0x90, 0x56, 0xe3, 0x3f, 0x9a, 0xc4, 0x04, 0x02, 0x1d, 0x58, 0xa0, 0x1f, 0xfc, 0x55, 0xd2, 0xc4, 0xda, 0xf5, 0xb6, 0xad, 0x85, 0x84, 0x8d, 0x8d, 0x3c, 0xa5, 0x01, 0xf7, 0x75, 0xd9, 0xda, 0x58, 0x50, 0x25, 0xa0, 0xec, 0xbd, 0x90, 0x2b, 0x87, 0xb2, 0xaf},
+			version:    4,
 		},
 		{
 			name:       "Good",

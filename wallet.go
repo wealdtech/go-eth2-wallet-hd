@@ -1,4 +1,4 @@
-// Copyright 2019 - 2023 Weald Technology Trading.
+// Copyright © 2019 - 2025 Weald Technology Trading.
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
 // You may obtain a copy of the License at
@@ -52,7 +52,7 @@ type wallet struct {
 	batchDecrypted bool
 }
 
-// newWallet creates a new wallet
+// newWallet creates a new wallet.
 func newWallet() *wallet {
 	return &wallet{
 		index:    indexer.New(),
@@ -69,15 +69,45 @@ func (w *wallet) MarshalJSON() ([]byte, error) {
 	data["type"] = walletType
 	data["crypto"] = w.crypto
 	data["nextaccount"] = w.nextAccount
-	return json.Marshal(data)
+
+	res, err := json.Marshal(data)
+	if err != nil {
+		return nil, errors.Wrap(err, "failed to marshal wallet")
+	}
+
+	return res, nil
 }
 
 // UnmarshalJSON implements custom JSON unmarshaller.
 func (w *wallet) UnmarshalJSON(data []byte) error {
 	var v map[string]any
 	if err := json.Unmarshal(data, &v); err != nil {
+		return errors.Wrap(err, "failed to unmarshal wallet")
+	}
+
+	if err := w.unmarshalType(v); err != nil {
 		return err
 	}
+	if err := w.unmarshalID(v); err != nil {
+		return err
+	}
+	if err := w.unmarshalName(v); err != nil {
+		return err
+	}
+	if err := w.unmarshalCrypto(v); err != nil {
+		return err
+	}
+	if err := w.unmarshalNextAccount(v); err != nil {
+		return err
+	}
+	if err := w.unmarshalVersion(v); err != nil {
+		return err
+	}
+
+	return nil
+}
+
+func (w *wallet) unmarshalType(v map[string]any) error {
 	if val, exists := v["type"]; exists {
 		dataWalletType, ok := val.(string)
 		if !ok {
@@ -89,6 +119,11 @@ func (w *wallet) UnmarshalJSON(data []byte) error {
 	} else {
 		return errors.New("wallet type missing")
 	}
+
+	return nil
+}
+
+func (w *wallet) unmarshalID(v map[string]any) error {
 	if val, exists := v["uuid"]; exists {
 		idStr, ok := val.(string)
 		if !ok {
@@ -96,7 +131,7 @@ func (w *wallet) UnmarshalJSON(data []byte) error {
 		}
 		id, err := uuid.Parse(idStr)
 		if err != nil {
-			return err
+			return errors.Wrap(err, "failed to parse UUID")
 		}
 		w.id = id
 	} else {
@@ -108,13 +143,18 @@ func (w *wallet) UnmarshalJSON(data []byte) error {
 			}
 			id, err := uuid.Parse(idStr)
 			if err != nil {
-				return err
+				return errors.Wrap(err, "failed to parse UUID")
 			}
 			w.id = id
 		} else {
 			return errors.New("wallet ID missing")
 		}
 	}
+
+	return nil
+}
+
+func (w *wallet) unmarshalName(v map[string]any) error {
 	if val, exists := v["name"]; exists {
 		name, ok := val.(string)
 		if !ok {
@@ -124,6 +164,11 @@ func (w *wallet) UnmarshalJSON(data []byte) error {
 	} else {
 		return errors.New("wallet name missing")
 	}
+
+	return nil
+}
+
+func (w *wallet) unmarshalCrypto(v map[string]any) error {
 	if val, exists := v["crypto"]; exists {
 		crypto, ok := val.(map[string]any)
 		if !ok {
@@ -133,6 +178,11 @@ func (w *wallet) UnmarshalJSON(data []byte) error {
 	} else {
 		return errors.New("wallet crypto missing")
 	}
+
+	return nil
+}
+
+func (w *wallet) unmarshalNextAccount(v map[string]any) error {
 	if val, exists := v["nextaccount"]; exists {
 		nextAccount, ok := val.(float64)
 		if !ok {
@@ -142,6 +192,11 @@ func (w *wallet) UnmarshalJSON(data []byte) error {
 	} else {
 		return errors.New("wallet next account missing")
 	}
+
+	return nil
+}
+
+func (w *wallet) unmarshalVersion(v map[string]any) error {
 	if val, exists := v["version"]; exists {
 		version, ok := val.(float64)
 		if !ok {
@@ -156,7 +211,16 @@ func (w *wallet) UnmarshalJSON(data []byte) error {
 }
 
 // CreateWallet creates a wallet with the given name from a seed and stores it in the provided store.
-func CreateWallet(ctx context.Context, name string, passphrase []byte, store e2wtypes.Store, encryptor e2wtypes.Encryptor, seed []byte) (e2wtypes.Wallet, error) {
+func CreateWallet(ctx context.Context,
+	name string,
+	passphrase []byte,
+	store e2wtypes.Store,
+	encryptor e2wtypes.Encryptor,
+	seed []byte,
+) (
+	e2wtypes.Wallet,
+	error,
+) {
 	// First, try to open the wallet.
 	_, err := OpenWallet(ctx, name, store, encryptor)
 	if err == nil || !strings.Contains(err.Error(), "wallet not found") {
@@ -165,7 +229,7 @@ func CreateWallet(ctx context.Context, name string, passphrase []byte, store e2w
 
 	id, err := uuid.NewRandom()
 	if err != nil {
-		return nil, err
+		return nil, errors.Wrap(err, "failed to generate UUID")
 	}
 
 	if len(seed) != 64 {
@@ -212,7 +276,7 @@ func OpenWallet(ctx context.Context, name string, store e2wtypes.Store, encrypto
 	return DeserializeWallet(ctx, data, store, encryptor)
 }
 
-// DeserializeWallet deserializes a wallet from its byte-level representation
+// DeserializeWallet deserializes a wallet from its byte-level representation.
 func DeserializeWallet(ctx context.Context,
 	data []byte,
 	store e2wtypes.Store,
@@ -261,23 +325,28 @@ func (w *wallet) storeWallet() error {
 
 	data, err := json.Marshal(w)
 	if err != nil {
-		return err
+		return errors.Wrap(err, "failed to marshal wallet")
 	}
 
-	return w.store.StoreWallet(w.ID(), w.Name(), data)
+	if err := w.store.StoreWallet(w.ID(), w.Name(), data); err != nil {
+		return errors.Wrap(err, "failed to store wallet")
+	}
+
+	return nil
 }
 
 // Lock locks the wallet.  A locked wallet cannot create new accounts.
-func (w *wallet) Lock(ctx context.Context) error {
+func (w *wallet) Lock(_ context.Context) error {
 	w.mutex.Lock()
 	defer w.mutex.Unlock()
 
 	w.seed = nil
+
 	return nil
 }
 
 // Unlock unlocks the wallet.  An unlocked wallet can create new accounts.
-func (w *wallet) Unlock(ctx context.Context, passphrase []byte) error {
+func (w *wallet) Unlock(_ context.Context, passphrase []byte) error {
 	w.mutex.Lock()
 	defer w.mutex.Unlock()
 
@@ -291,7 +360,7 @@ func (w *wallet) Unlock(ctx context.Context, passphrase []byte) error {
 }
 
 // IsUnlocked reports if the wallet is unlocked.
-func (w *wallet) IsUnlocked(ctx context.Context) (bool, error) {
+func (w *wallet) IsUnlocked(_ context.Context) (bool, error) {
 	w.mutex.Lock()
 	defer w.mutex.Unlock()
 
@@ -386,14 +455,14 @@ func (w *wallet) createPathedAccount(ctx context.Context, path string, name stri
 	a := newAccount()
 	a.path = path
 	if a.id, err = uuid.NewRandom(); err != nil {
-		return nil, err
+		return nil, errors.Wrap(err, "failed to generate UUID")
 	}
 	a.name = name
 	a.publicKey = privateKey.PublicKey()
 	// Encrypt the private key
 	a.crypto, err = w.encryptor.Encrypt(privateKey.Marshal(), string(passphrase))
 	if err != nil {
-		return nil, err
+		return nil, errors.Wrap(err, "failed to encrypt private key")
 	}
 	a.encryptor = w.encryptor
 	a.version = w.encryptor.Version()
@@ -515,7 +584,7 @@ func Import(ctx context.Context,
 	ext.Wallet.store = store
 	ext.Wallet.encryptor = encryptor
 	if err := json.Unmarshal(data, ext); err != nil {
-		return nil, err
+		return nil, errors.Wrap(err, "failed to unmarshal wallet import")
 	}
 
 	// See if the wallet already exists.
@@ -602,7 +671,7 @@ func (w *wallet) programmaticAccount(path string) (e2wtypes.Account, error) {
 	a.path = path
 	a.id, err = uuid.NewRandom()
 	if err != nil {
-		return nil, err
+		return nil, errors.Wrap(err, "failed to generate UUID")
 	}
 	a.name = path
 	a.publicKey = privateKey.PublicKey()
@@ -610,7 +679,7 @@ func (w *wallet) programmaticAccount(path string) (e2wtypes.Account, error) {
 	// Encrypt the private key with an empty passphrase.
 	a.crypto, err = w.encryptor.Encrypt(privateKey.Marshal(), "")
 	if err != nil {
-		return nil, err
+		return nil, errors.Wrap(err, "failed to encrypt private key")
 	}
 	a.encryptor = w.encryptor
 	a.version = w.encryptor.Version()

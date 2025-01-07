@@ -1,4 +1,4 @@
-// Copyright 2019 - 2023 Weald Technology Trading.
+// Copyright © 2019 - 2025 Weald Technology Trading.
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
 // You may obtain a copy of the License at
@@ -19,6 +19,7 @@ import (
 	"encoding/hex"
 	"encoding/json"
 	"fmt"
+	"strings"
 	"sync"
 
 	"github.com/google/uuid"
@@ -43,7 +44,7 @@ type account struct {
 	mutex     sync.Mutex
 }
 
-// newAccount creates a new account
+// newAccount creates a new account.
 func newAccount() *account {
 	return &account{}
 }
@@ -57,15 +58,44 @@ func (a *account) MarshalJSON() ([]byte, error) {
 	data["crypto"] = a.crypto
 	data["path"] = a.path
 	data["version"] = a.version
-	return json.Marshal(data)
+
+	res, err := json.Marshal(data)
+	if err != nil {
+		return nil, errors.Wrap(err, "failed to marshal account")
+	}
+
+	return res, nil
 }
 
 // UnmarshalJSON implements custom JSON unmarshaller.
 func (a *account) UnmarshalJSON(data []byte) error {
 	var v map[string]any
 	if err := json.Unmarshal(data, &v); err != nil {
+		return errors.Wrap(err, "failed to unmarshal account")
+	}
+	if err := a.unmarshalID(v); err != nil {
 		return err
 	}
+	if err := a.unmarshalPubkey(v); err != nil {
+		return err
+	}
+	if err := a.unmarshalName(v); err != nil {
+		return err
+	}
+	if err := a.unmarshalCrypto(v); err != nil {
+		return err
+	}
+	if err := a.unmarshalPath(v); err != nil {
+		return err
+	}
+	if err := a.unmarshalVersion(v); err != nil {
+		return err
+	}
+
+	return nil
+}
+
+func (a *account) unmarshalID(v map[string]any) error {
 	if val, exists := v["uuid"]; exists {
 		idStr, ok := val.(string)
 		if !ok {
@@ -73,11 +103,11 @@ func (a *account) UnmarshalJSON(data []byte) error {
 		}
 		id, err := uuid.Parse(idStr)
 		if err != nil {
-			return err
+			return errors.Wrap(err, "failed to parse UUID")
 		}
 		a.id = id
 	} else {
-		// Used to be ID; remove with V2.0
+		// Used to be ID; remove with V2.0.
 		if val, exists := v["id"]; exists {
 			idStr, ok := val.(string)
 			if !ok {
@@ -85,13 +115,39 @@ func (a *account) UnmarshalJSON(data []byte) error {
 			}
 			id, err := uuid.Parse(idStr)
 			if err != nil {
-				return err
+				return errors.Wrap(err, "failed to parse UUID")
 			}
 			a.id = id
 		} else {
 			return errors.New("account ID missing")
 		}
 	}
+
+	return nil
+}
+
+func (a *account) unmarshalPubkey(v map[string]any) error {
+	val, exists := v["pubkey"]
+	if !exists {
+		return errors.New("account pubkey missing")
+	}
+	publicKey, ok := val.(string)
+	if !ok {
+		return errors.New("account pubkey invalid")
+	}
+	bytes, err := hex.DecodeString(strings.TrimPrefix(publicKey, "0x"))
+	if err != nil {
+		return errors.Wrap(err, "failed to decode public key")
+	}
+	a.publicKey, err = e2types.BLSPublicKeyFromBytes(bytes)
+	if err != nil {
+		return errors.Wrap(err, "account pubkey could not be decoded")
+	}
+
+	return nil
+}
+
+func (a *account) unmarshalName(v map[string]any) error {
 	if val, exists := v["name"]; exists {
 		name, ok := val.(string)
 		if !ok {
@@ -99,24 +155,14 @@ func (a *account) UnmarshalJSON(data []byte) error {
 		}
 		a.name = name
 	} else {
-		return errors.New("account name missing")
+		// Use the public key instead.
+		a.name = fmt.Sprintf("%#x", a.publicKey.Marshal())
 	}
-	if val, exists := v["pubkey"]; exists {
-		publicKey, ok := val.(string)
-		if !ok {
-			return errors.New("account pubkey invalid")
-		}
-		bytes, err := hex.DecodeString(publicKey)
-		if err != nil {
-			return err
-		}
-		a.publicKey, err = e2types.BLSPublicKeyFromBytes(bytes)
-		if err != nil {
-			return err
-		}
-	} else {
-		return errors.New("account pubkey missing")
-	}
+
+	return nil
+}
+
+func (a *account) unmarshalCrypto(v map[string]any) error {
 	if val, exists := v["crypto"]; exists {
 		crypto, ok := val.(map[string]any)
 		if !ok {
@@ -126,6 +172,11 @@ func (a *account) UnmarshalJSON(data []byte) error {
 	} else {
 		return errors.New("account crypto missing")
 	}
+
+	return nil
+}
+
+func (a *account) unmarshalPath(v map[string]any) error {
 	if val, exists := v["path"]; exists {
 		path, ok := val.(string)
 		if !ok {
@@ -135,6 +186,11 @@ func (a *account) UnmarshalJSON(data []byte) error {
 	} else {
 		return errors.New("account path missing")
 	}
+
+	return nil
+}
+
+func (a *account) unmarshalVersion(v map[string]any) error {
 	if val, exists := v["version"]; exists {
 		version, ok := val.(float64)
 		if !ok {
@@ -172,12 +228,17 @@ func (a *account) PublicKey() e2types.PublicKey {
 }
 
 // PrivateKey provides the private key for the account.
-func (a *account) PrivateKey(ctx context.Context) (e2types.PrivateKey, error) {
+func (a *account) PrivateKey(_ context.Context) (e2types.PrivateKey, error) {
 	if !a.unlocked {
 		return nil, errors.New("cannot provide private key when account is locked")
 	}
 
-	return e2types.BLSPrivateKeyFromBytes(a.secretKey.Marshal())
+	res, err := e2types.BLSPrivateKeyFromBytes(a.secretKey.Marshal())
+	if err != nil {
+		return nil, errors.Wrap(err, "account private key could not be decoded")
+	}
+
+	return res, nil
 }
 
 // Wallet provides the wallet for the account.
@@ -186,7 +247,7 @@ func (a *account) Wallet() e2wtypes.Wallet {
 }
 
 // Lock locks the account.  A locked account cannot sign data.
-func (a *account) Lock(ctx context.Context) error {
+func (a *account) Lock(_ context.Context) error {
 	a.mutex.Lock()
 	defer a.mutex.Unlock()
 
@@ -238,7 +299,10 @@ func (a *account) Unlock(ctx context.Context, passphrase []byte) error {
 }
 
 // IsUnlocked returns true if the account is unlocked.
-func (a *account) IsUnlocked(ctx context.Context) (bool, error) {
+func (a *account) IsUnlocked(_ context.Context) (bool, error) {
+	a.mutex.Lock()
+	defer a.mutex.Unlock()
+
 	return a.unlocked, nil
 }
 
@@ -287,7 +351,8 @@ func deserializeAccount(w *wallet, data []byte) (*account, error) {
 	a.wallet = w
 	a.encryptor = w.encryptor
 	if err := json.Unmarshal(data, a); err != nil {
-		return nil, err
+		return nil, errors.Wrap(err, "failed to unmarshal account")
 	}
+
 	return a, nil
 }
